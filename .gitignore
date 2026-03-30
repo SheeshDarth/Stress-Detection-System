@@ -1,0 +1,88 @@
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.env/
+
+# ── Python cache ──────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+
+# ── Build / dist ──────────────────────────────────────────────────────────────
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.log
+
+# ── IDE / Editor ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user
+*.sln.docstates
+.history/
+
+# ── OS generated ─────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── Application logs (auto-generated at runtime) ─────────────────────────────
+logs/
+!logs/.gitkeep
+
+# ── Session outputs ───────────────────────────────────────────────────────────
+*.csv
+screenshot_*.png
+
+# ── ML models: keep metadata JSON, but NOT the large binary pkl ──────────────
+# The pkl is auto-generated on first run via train.py / _ensure_model()
+models/stress_model.pkl
+models/stress_model_backup_*.pkl
+
+# ── MediaPipe model: downloaded separately (too large for GitHub ~25 MB) ─────
+models/face_landmarker.task
+models/face_landmarker_*.task
+
+# ── Dataset files (large NumPy arrays, not committed) ─────────────────────────
+data/*.npy
+data/*.npz
+data/UBFC*/
+data/ubfc*/
+
+# ── Test fixtures (generated on first test run) ───────────────────────────────
+tests/fixtures/test_video.avi
+tests/fixtures/*.avi
+tests/fixtures/*.mp4
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Temporary / scratch ───────────────────────────────────────────────────────
+tmp/
+scratch/
+*.tmp
+*.bak
+
+# ── Kaggle API credentials (NEVER commit) ─────────────────────────────────────
+kaggle.json
+.kaggle/

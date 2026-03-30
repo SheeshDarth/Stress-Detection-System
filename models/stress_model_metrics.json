@@ -1,0 +1,42 @@
+{
+  "features": [
+    "blink_rate",
+    "ear_mean",
+    "ear_std",
+    "brow_furrow_mean",
+    "brow_furrow_std",
+    "head_pose_variance",
+    "head_pose_mean_movement",
+    "bpm",
+    "hrv_rmssd"
+  ],
+  "importance": {
+    "ear_std": 0.25784750670473583,
+    "brow_furrow_std": 0.25332397642613097,
+    "head_pose_variance": 0.170337610325507,
+    "head_pose_mean_movement": 0.09219182038238338,
+    "blink_rate": 0.0836552397957588,
+    "bpm": 0.06884942865377788,
+    "hrv_rmssd": 0.03592088631279077,
+    "brow_furrow_mean": 0.019424014017017013,
+    "ear_mean": 0.018449517381898418
+  },
+  "metrics": {
+    "accuracy": 0.9657258064516129,
+    "f1_score": 0.9666011787819253,
+    "roc_auc": 0.9939318019131905,
+    "cv_f1_mean": 0.9632164847400528,
+    "cv_f1_std": 0.010644486276489793,
+    "confusion_matrix": [
+      [
+        233,
+        9
+      ],
+      [
+        8,
+        246
+      ]
+    ],
+    "timestamp": "2026-03-14T18:04:52.992876"
+  }
+}
