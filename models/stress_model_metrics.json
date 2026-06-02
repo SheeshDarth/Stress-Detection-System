@@ -8,35 +8,39 @@
     "head_pose_variance",
     "head_pose_mean_movement",
     "bpm",
-    "hrv_rmssd"
+    "hrv_rmssd",
+    "lip_depression_mean",
+    "jaw_clenching_std"
   ],
   "importance": {
-    "ear_std": 0.25784750670473583,
-    "brow_furrow_std": 0.25332397642613097,
-    "head_pose_variance": 0.170337610325507,
-    "head_pose_mean_movement": 0.09219182038238338,
-    "blink_rate": 0.0836552397957588,
-    "bpm": 0.06884942865377788,
-    "hrv_rmssd": 0.03592088631279077,
-    "brow_furrow_mean": 0.019424014017017013,
-    "ear_mean": 0.018449517381898418
+    "lip_depression_mean": 0.319885784130009,
+    "jaw_clenching_std": 0.262866792866541,
+    "brow_furrow_std": 0.13582290762485236,
+    "head_pose_variance": 0.0932179574840125,
+    "ear_std": 0.06865787788623194,
+    "head_pose_mean_movement": 0.03962506565901575,
+    "blink_rate": 0.025806851388756453,
+    "bpm": 0.022137743935010855,
+    "brow_furrow_mean": 0.0154580924455927,
+    "hrv_rmssd": 0.010717654698120343,
+    "ear_mean": 0.005803271881856932
   },
   "metrics": {
-    "accuracy": 0.9657258064516129,
-    "f1_score": 0.9666011787819253,
-    "roc_auc": 0.9939318019131905,
-    "cv_f1_mean": 0.9632164847400528,
-    "cv_f1_std": 0.010644486276489793,
+    "accuracy": 0.9891304347826086,
+    "f1_score": 0.9892008639308856,
+    "roc_auc": 0.9998109640831758,
+    "cv_f1_mean": 0.9800971963465251,
+    "cv_f1_std": 0.004020825715342594,
     "confusion_matrix": [
       [
-        233,
-        9
+        226,
+        4
       ],
       [
-        8,
-        246
+        1,
+        229
       ]
     ],
-    "timestamp": "2026-03-14T18:04:52.992876"
+    "timestamp": "2026-06-02T15:20:09.251382"
   }
 }

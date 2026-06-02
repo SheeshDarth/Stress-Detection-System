@@ -1,0 +1,228 @@
+{
+  "timestamp": "2026-06-02T16:29:23.506028",
+  "n_samples": 2300,
+  "n_folds": 5,
+  "ablation": [
+    {
+      "Configuration": "A1  Full System (11D, RF+ET)",
+      "Dim": 11,
+      "Accuracy": "0.9852",
+      "Acc - std": "-0.0046",
+      "F1-Score": "0.9853",
+      "F1 - std": "-0.0045",
+      "ROC-AUC": "0.9995",
+      "AUC - std": "-0.0004"
+    },
+    {
+      "Configuration": "A2  No Lip/Jaw (9D, RF+ET)",
+      "Dim": 9,
+      "Accuracy": "0.9739",
+      "Acc - std": "-0.0048",
+      "F1-Score": "0.9743",
+      "F1 - std": "-0.0046",
+      "ROC-AUC": "0.9978",
+      "AUC - std": "-0.0012"
+    },
+    {
+      "Configuration": "A3  Behavioral Only (9D, RF+ET)",
+      "Dim": 9,
+      "Accuracy": "0.9839",
+      "Acc - std": "-0.0047",
+      "F1-Score": "0.9840",
+      "F1 - std": "-0.0046",
+      "ROC-AUC": "0.9993",
+      "AUC - std": "-0.0005"
+    },
+    {
+      "Configuration": "A4  Physiological Only (2D, RF+ET)",
+      "Dim": 2,
+      "Accuracy": "0.8643",
+      "Acc - std": "-0.0182",
+      "F1-Score": "0.8630",
+      "F1 - std": "-0.0210",
+      "ROC-AUC": "0.9417",
+      "AUC - std": "-0.0107"
+    },
+    {
+      "Configuration": "A5  RF Only (11D, no ExtraTrees)",
+      "Dim": 11,
+      "Accuracy": "0.9826",
+      "Acc - std": "-0.0050",
+      "F1-Score": "0.9828",
+      "F1 - std": "-0.0048",
+      "ROC-AUC": "0.9994",
+      "AUC - std": "-0.0004"
+    },
+    {
+      "Configuration": "B1  SVM-RBF (11D)",
+      "Dim": 11,
+      "Accuracy": "0.9917",
+      "Acc - std": "-0.0061",
+      "F1-Score": "0.9917",
+      "F1 - std": "-0.0061",
+      "ROC-AUC": "0.9993",
+      "AUC - std": "-0.0007"
+    },
+    {
+      "Configuration": "B2  Logistic Regression (11D)",
+      "Dim": 11,
+      "Accuracy": "0.9874",
+      "Acc - std": "-0.0029",
+      "F1-Score": "0.9874",
+      "F1 - std": "-0.0029",
+      "ROC-AUC": "0.9994",
+      "AUC - std": "-0.0004"
+    },
+    {
+      "Configuration": "B3  k-NN k=5 (11D)",
+      "Dim": 11,
+      "Accuracy": "0.9826",
+      "Acc - std": "-0.0036",
+      "F1-Score": "0.9823",
+      "F1 - std": "-0.0038",
+      "ROC-AUC": "0.9950",
+      "AUC - std": "-0.0043"
+    },
+    {
+      "Configuration": "B4  AU-Only RF (7D behav)",
+      "Dim": 7,
+      "Accuracy": "0.9661",
+      "Acc - std": "-0.0049",
+      "F1-Score": "0.9666",
+      "F1 - std": "-0.0049",
+      "ROC-AUC": "0.9952",
+      "AUC - std": "-0.0014"
+    },
+    {
+      "Configuration": "B5  BPM Threshold (1D)",
+      "Dim": 11,
+      "Accuracy": "0.7822",
+      "Acc - std": "-0.0162",
+      "F1-Score": "0.7889",
+      "F1 - std": "-0.0150",
+      "ROC-AUC": "nan",
+      "AUC - std": "-nan"
+    }
+  ],
+  "significance": [
+    {
+      "Configuration": "A2  No Lip/Jaw (9D, RF+ET)",
+      "- F1 (vs full)": "+0.0110",
+      "t-stat": "3.208",
+      "p (t-test)": "0.0326",
+      "sig (t)": "*",
+      "W-stat": "0.0",
+      "p (Wilcoxon)": "0.0625",
+      "sig (W)": "ns",
+      "Conclusion": "Full system significantly better (p<0.05)"
+    },
+    {
+      "Configuration": "A3  Behavioral Only (9D, RF+ET)",
+      "- F1 (vs full)": "+0.0013",
+      "t-stat": "2.449",
+      "p (t-test)": "0.0706",
+      "sig (t)": "ns",
+      "W-stat": "0.0",
+      "p (Wilcoxon)": "0.2500",
+      "sig (W)": "ns",
+      "Conclusion": "No significant difference"
+    },
+    {
+      "Configuration": "A4  Physiological Only (2D, RF+ET)",
+      "- F1 (vs full)": "+0.1223",
+      "t-stat": "12.092",
+      "p (t-test)": "0.0003",
+      "sig (t)": "***",
+      "W-stat": "0.0",
+      "p (Wilcoxon)": "0.0625",
+      "sig (W)": "ns",
+      "Conclusion": "Full system significantly better (p<0.05)"
+    },
+    {
+      "Configuration": "A5  RF Only (11D, no ExtraTrees)",
+      "- F1 (vs full)": "+0.0025",
+      "t-stat": "3.232",
+      "p (t-test)": "0.0319",
+      "sig (t)": "*",
+      "W-stat": "0.0",
+      "p (Wilcoxon)": "0.1250",
+      "sig (W)": "ns",
+      "Conclusion": "Full system significantly better (p<0.05)"
+    },
+    {
+      "Configuration": "B1  SVM-RBF (11D)",
+      "- F1 (vs full)": "-0.0063",
+      "t-stat": "-1.742",
+      "p (t-test)": "0.1566",
+      "sig (t)": "ns",
+      "W-stat": "2.0",
+      "p (Wilcoxon)": "0.1875",
+      "sig (W)": "ns",
+      "Conclusion": "No significant difference"
+    },
+    {
+      "Configuration": "B2  Logistic Regression (11D)",
+      "- F1 (vs full)": "-0.0020",
+      "t-stat": "-0.716",
+      "p (t-test)": "0.5136",
+      "sig (t)": "ns",
+      "W-stat": "7.0",
+      "p (Wilcoxon)": "1.0000",
+      "sig (W)": "ns",
+      "Conclusion": "No significant difference"
+    },
+    {
+      "Configuration": "B3  k-NN k=5 (11D)",
+      "- F1 (vs full)": "+0.0030",
+      "t-stat": "0.848",
+      "p (t-test)": "0.4441",
+      "sig (t)": "ns",
+      "W-stat": "5.0",
+      "p (Wilcoxon)": "0.6250",
+      "sig (W)": "ns",
+      "Conclusion": "No significant difference"
+    },
+    {
+      "Configuration": "B4  AU-Only RF (7D behav)",
+      "- F1 (vs full)": "+0.0187",
+      "t-stat": "4.189",
+      "p (t-test)": "0.0138",
+      "sig (t)": "*",
+      "W-stat": "0.0",
+      "p (Wilcoxon)": "0.0625",
+      "sig (W)": "ns",
+      "Conclusion": "Full system significantly better (p<0.05)"
+    },
+    {
+      "Configuration": "B5  BPM Threshold (1D)",
+      "- F1 (vs full)": "+0.1964",
+      "t-stat": "22.966",
+      "p (t-test)": "0.0000",
+      "sig (t)": "***",
+      "W-stat": "0.0",
+      "p (Wilcoxon)": "0.0625",
+      "sig (W)": "ns",
+      "Conclusion": "Full system significantly better (p<0.05)"
+    }
+  ],
+  "temporal": {
+    "with_hysteresis_and_override": {
+      "flip_rate": 0.0,
+      "transition_lag": 0,
+      "lock_in_rate": 0.0,
+      "accuracy": 1.0
+    },
+    "with_hysteresis_no_override": {
+      "flip_rate": 0.0,
+      "transition_lag": 0,
+      "lock_in_rate": 0.0,
+      "accuracy": 1.0
+    },
+    "no_hysteresis_no_override": {
+      "flip_rate": 5.0,
+      "transition_lag": 0,
+      "lock_in_rate": 0.0,
+      "accuracy": 0.9583
+    }
+  }
+}
