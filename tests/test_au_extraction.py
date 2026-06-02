@@ -78,8 +78,8 @@ class TestEMASmoothing:
         prev = 0.5
         value = 1.0
         result = au_extractor._ema(prev, value)
-        # alpha=0.33 → 0.33*1.0 + 0.67*0.5 = 0.665
-        assert result == pytest.approx(0.665, abs=0.01)
+        # alpha=0.25 → 0.25*1.0 + 0.75*0.5 = 0.625
+        assert result == pytest.approx(0.625, abs=0.01)
 
 
 class TestBufferReset:

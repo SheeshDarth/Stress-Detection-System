@@ -24,7 +24,11 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import (
+    RandomForestClassifier,
+    ExtraTreesClassifier,
+    VotingClassifier,
+)
 from sklearn.model_selection import (
     train_test_split,
     StratifiedKFold,
@@ -45,7 +49,7 @@ from sklearn.metrics import (
 # ── Module logger ────────────────────────────────────────────────────
 logger = logging.getLogger(__name__)
 
-# ── Feature schema (9-D) ────────────────────────────────────────────
+# ── Feature schema (11-D) ───────────────────────────────────────────
 FEATURE_NAMES = [
     "blink_rate",
     "ear_mean",
@@ -56,6 +60,8 @@ FEATURE_NAMES = [
     "head_pose_mean_movement",
     "bpm",
     "hrv_rmssd",
+    "lip_depression_mean",      # AU15 proxy — lip corner depression
+    "jaw_clenching_std",        # chin-to-nose distance variability
 ]
 
 
@@ -87,6 +93,8 @@ class StressClassifier:
             visual.get("head_pose_mean_movement", 0.0),
             physio.get("bpm", 0.0),
             physio.get("hrv_rmssd", 0.0),
+            visual.get("lip_depression_mean", 0.0),   # AU15
+            visual.get("jaw_clenching_std", 0.0),     # jaw tension
         ])
 
     # ── synthetic data generation ────────────────────────────────────
@@ -106,50 +114,50 @@ class StressClassifier:
 
         def _block(means, stds, n, rng):
             data = rng.normal(means, stds, size=(n, len(means)))
-            # Clip to physiologically reasonable ranges
-            data[:, 0] = np.clip(data[:, 0], 2, 50)     # blink rate
-            data[:, 1] = np.clip(data[:, 1], 0.10, 0.45) # ear_mean
-            data[:, 2] = np.clip(data[:, 2], 0.001, 0.10) # ear_std
-            data[:, 3] = np.clip(data[:, 3], 0.15, 0.50) # brow_mean
-            data[:, 4] = np.clip(data[:, 4], 0.001, 0.08) # brow_std
-            data[:, 5] = np.clip(data[:, 5], 0.0001, 0.02) # head_var
-            data[:, 6] = np.clip(data[:, 6], 0.001, 0.05) # head_move
-            data[:, 7] = np.clip(data[:, 7], 40, 180)    # bpm
-            data[:, 8] = np.clip(data[:, 8], 5, 120)     # hrv
+            data[:, 0]  = np.clip(data[:, 0],  2,      50)      # blink rate
+            data[:, 1]  = np.clip(data[:, 1],  0.10,   0.45)    # ear_mean
+            data[:, 2]  = np.clip(data[:, 2],  0.001,  0.10)    # ear_std
+            data[:, 3]  = np.clip(data[:, 3],  0.15,   0.50)    # brow_mean
+            data[:, 4]  = np.clip(data[:, 4],  0.001,  0.08)    # brow_std
+            data[:, 5]  = np.clip(data[:, 5],  0.0001, 0.02)    # head_var
+            data[:, 6]  = np.clip(data[:, 6],  0.001,  0.05)    # head_move
+            data[:, 7]  = np.clip(data[:, 7],  40,     180)     # bpm
+            data[:, 8]  = np.clip(data[:, 8],  5,      120)     # hrv
+            data[:, 9]  = np.clip(data[:, 9],  0.0,    0.50)    # lip_depression_mean
+            data[:, 10] = np.clip(data[:, 10], 0.0,    0.30)    # jaw_clenching_std
             return data
 
         # ── Normal state vectors ──
         normal = _block(
-            #  blink  ear_m  ear_s  brow_m brow_s  hp_var  hp_mv   bpm   hrv
-            [  15,    0.30,  0.02,  0.35,  0.01,  0.0010, 0.005,  72,    45],
-            [   4,    0.03,  0.006, 0.04,  0.004, 0.0006, 0.003,  10,    12],
+            #  blink  ear_m  ear_s  brow_m brow_s  hp_var  hp_mv   bpm   hrv   lip_dep jaw_std
+            [  15,    0.30,  0.02,  0.35,  0.01,  0.0010, 0.005,  72,    45,   0.08,   0.04],
+            [   4,    0.03,  0.006, 0.04,  0.004, 0.0006, 0.003,  10,    12,   0.02,   0.01],
             half, rng,
         )
-        # Add slight inter-subject variability
         for i in range(half):
-            subj_offset = rng.normal(0, 0.5, 9) * [1, 0.01, 0.002, 0.01, 0.001, 0.0001, 0.001, 3, 4]
+            subj_offset = rng.normal(0, 0.5, 11) * [1, 0.01, 0.002, 0.01, 0.001, 0.0001, 0.001, 3, 4, 0.01, 0.005]
             normal[i] += subj_offset
 
         # ── Stressed state vectors ──
         stressed = _block(
-            [  25,    0.25,  0.04,  0.28,  0.03,  0.0050, 0.015,  95,    25],
-            [   6,    0.04,  0.012, 0.04,  0.010, 0.0025, 0.008,  15,    10],
+            [  25,    0.25,  0.04,  0.28,  0.03,  0.0050, 0.015,  95,    25,   0.22,   0.10],
+            [   6,    0.04,  0.012, 0.04,  0.010, 0.0025, 0.008,  15,    10,   0.05,   0.025],
             n_samples - half, rng,
         )
         for i in range(n_samples - half):
-            subj_offset = rng.normal(0, 0.5, 9) * [2, 0.01, 0.003, 0.01, 0.002, 0.0002, 0.002, 5, 3]
+            subj_offset = rng.normal(0, 0.5, 11) * [2, 0.01, 0.003, 0.01, 0.002, 0.0002, 0.002, 5, 3, 0.02, 0.008]
             stressed[i] += subj_offset
 
         # Add borderline cases (15% of data — harder to classify)
         n_border = int(n_samples * 0.15)
         borderline_normal = _block(
-            [  20,    0.27,  0.03,  0.31,  0.02,  0.0030, 0.010,  82,    35],
-            [   3,    0.02,  0.005, 0.03,  0.005, 0.0010, 0.004,   8,     8],
+            [  20,    0.27,  0.03,  0.31,  0.02,  0.0030, 0.010,  82,    35,   0.13,   0.06],
+            [   3,    0.02,  0.005, 0.03,  0.005, 0.0010, 0.004,   8,     8,   0.03,   0.015],
             n_border // 2, rng,
         )
         borderline_stress = _block(
-            [  22,    0.26,  0.035, 0.30,  0.025, 0.0040, 0.012,  88,    30],
-            [   4,    0.03,  0.008, 0.03,  0.007, 0.0015, 0.005,  10,     7],
+            [  22,    0.26,  0.035, 0.30,  0.025, 0.0040, 0.012,  88,    30,   0.18,   0.08],
+            [   4,    0.03,  0.008, 0.03,  0.007, 0.0015, 0.005,  10,     7,   0.04,   0.02],
             n_border - n_border // 2, rng,
         )
 
@@ -168,12 +176,23 @@ class StressClassifier:
     # ── UBFC-Phys loader ─────────────────────────────────────────────
 
     def load_ubfc_features(self, data_dir: str = "data") -> tuple[np.ndarray, np.ndarray] | None:
-        """Load pre-extracted UBFC features from data/ directory."""
+        """Load pre-extracted UBFC features from data/ directory.
+
+        Rejects cached files whose feature count no longer matches FEATURE_NAMES
+        so a schema change always triggers clean re-extraction via train.py --extract.
+        """
         x_path = os.path.join(data_dir, "X_ubfc.npy")
         y_path = os.path.join(data_dir, "y_ubfc.npy")
         if os.path.exists(x_path) and os.path.exists(y_path):
             X = np.load(x_path)
             y = np.load(y_path)
+            if X.shape[1] != len(FEATURE_NAMES):
+                logger.warning(
+                    "UBFC cache has %d features, expected %d — skipping. "
+                    "Re-run: python train.py --extract",
+                    X.shape[1], len(FEATURE_NAMES),
+                )
+                return None
             logger.info("Loaded UBFC features: %d samples", X.shape[0])
             return X, y
         return None
@@ -250,6 +269,7 @@ class StressClassifier:
             logger.info("Best params: %s", best_params)
             rf = grid.best_estimator_
         else:
+            # Train RF once to obtain feature importances, then build ensemble
             rf = RandomForestClassifier(
                 n_estimators=200,
                 max_depth=12,
@@ -262,18 +282,35 @@ class StressClassifier:
             )
             rf.fit(X_tr, y_tr)
 
-        # Calibrate probabilities for better confidence estimates
-        self.model = CalibratedClassifierCV(rf, cv=3, method="isotonic")
-        self.model.fit(X_tr, y_tr)
-
-        # Cross-validation on full training set
+        # ── Cross-validation on RF alone (baseline measure) ──
         cv_scores = cross_val_score(
             rf, X_tr, y_tr, cv=StratifiedKFold(5, shuffle=True, random_state=42),
             scoring="f1",
         )
 
-        # Feature importance
+        # Feature importance from RF (Gini)
         importances = rf.feature_importances_
+
+        # ── Build RF + ExtraTrees soft-voting ensemble ──
+        et = ExtraTreesClassifier(
+            n_estimators=200,
+            max_depth=12,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            max_features="sqrt",
+            random_state=43,
+            n_jobs=-1,
+            class_weight="balanced",
+        )
+        ensemble = VotingClassifier(
+            estimators=[("rf", rf), ("et", et)],
+            voting="soft",
+            n_jobs=-1,
+        )
+
+        # Calibrate the ensemble for reliable probability estimates
+        self.model = CalibratedClassifierCV(ensemble, cv=3, method="isotonic")
+        self.model.fit(X_tr, y_tr)
         self.feature_importance = {
             name: float(imp)
             for name, imp in sorted(
@@ -361,17 +398,29 @@ class StressClassifier:
     def load_model(self) -> bool:
         if not os.path.exists(self.model_path):
             return False
-        with open(self.model_path, "rb") as f:
-            data = pickle.load(f)
-        self.model   = data["model"]
-        self.scaler  = data["scaler"]
-        self.feature_importance = data.get("importance", {})
-        self.training_metrics   = data.get("metrics", {})
-        self.is_trained = True
-        acc = self.training_metrics.get("accuracy", "?")
-        f1  = self.training_metrics.get("f1_score", "?")
-        logger.info("Model loaded ← %s  (acc=%s, f1=%s)", self.model_path, acc, f1)
-        return True
+        try:
+            with open(self.model_path, "rb") as f:
+                data = pickle.load(f)
+            # Version check: reject saved models with wrong feature count
+            saved_features = data.get("features", [])
+            if len(saved_features) != len(FEATURE_NAMES):
+                logger.warning(
+                    "Model feature mismatch: saved=%d expected=%d — retraining.",
+                    len(saved_features), len(FEATURE_NAMES),
+                )
+                return False
+            self.model   = data["model"]
+            self.scaler  = data["scaler"]
+            self.feature_importance = data.get("importance", {})
+            self.training_metrics   = data.get("metrics", {})
+            self.is_trained = True
+            acc = self.training_metrics.get("accuracy", "?")
+            f1  = self.training_metrics.get("f1_score", "?")
+            logger.info("Model loaded ← %s  (acc=%s, f1=%s)", self.model_path, acc, f1)
+            return True
+        except Exception as exc:
+            logger.warning("Failed to load model: %s", exc)
+            return False
 
     def explain_prediction(self, vec_dict: dict, baseline_stats: dict) -> str:
         if not baseline_stats or baseline_stats.get("bpm", 0) == 0:

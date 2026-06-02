@@ -318,8 +318,10 @@ class StressDetectionSystem:
                     # ── Drowsiness detection (sustained low EAR = PERCLOS proxy) ──
                     # EAR < 0.21 for >2.5 s at 30 fps = drowsy (heavy eyelids)
                     ear_now = self.current_ear
+                    # Use per-user calibrated threshold from AUExtractor
+                    _drowsy_thresh = self.au_extractor.blink_threshold
                     if ear_now > 0:
-                        if ear_now < 0.21:
+                        if ear_now < _drowsy_thresh:
                             self._low_ear_frames += 1
                         else:
                             # Recover faster than accumulate to avoid sticking
@@ -344,7 +346,7 @@ class StressDetectionSystem:
                     can_predict = (
                         vis is not None
                         and self.current_bpm > 0
-                        and self.buffer_fill >= 0.50
+                        and self.buffer_fill >= 0.35   # lowered: faster first prediction
                         and self.signal_quality in ("Fair", "Good")
                     )
 

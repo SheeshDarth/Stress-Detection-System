@@ -136,8 +136,8 @@ class AUExtractor:
         self.blink_state = False
         self.frame_count = 0
 
-        # ── EMA smoothing ── (alpha = 2/(span+1), span=5)
-        self._ema_alpha = 0.33
+        # ── EMA smoothing ── (alpha = 2/(span+1), span=7 → less aggressive)
+        self._ema_alpha = 0.25
         self._ema_ear = None
         self._ema_brow = None
 
@@ -331,6 +331,14 @@ class AUExtractor:
         hp_var  = float(np.var(norms))
         hp_mean = float(np.mean(norms))
 
+        # ── Lip depression (AU15) & jaw clenching ──
+        lip_w = (np.array(self.lip_depression_buffer[-wf:])
+                 if len(self.lip_depression_buffer) >= wf
+                 else np.array([0.0]))
+        jaw_w = (np.array(self.jaw_buffer[-wf:])
+                 if len(self.jaw_buffer) >= wf
+                 else np.array([0.0]))
+
         return {
             "blink_rate":              blink_rate,
             "ear_mean":                float(np.mean(ear_w)),
@@ -339,6 +347,8 @@ class AUExtractor:
             "brow_furrow_std":         brow_std,
             "head_pose_variance":      hp_var,
             "head_pose_mean_movement": hp_mean,
+            "lip_depression_mean":     float(np.mean(lip_w)),
+            "jaw_clenching_std":       float(np.std(jaw_w)),
         }
 
     # ── housekeeping ─────────────────────────────────────────────────

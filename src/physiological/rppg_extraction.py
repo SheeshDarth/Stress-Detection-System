@@ -64,8 +64,12 @@ class RPPGExtractor:
         self.signal_snr: float   = 0.0
         self.pulse_signal: np.ndarray = np.array([])
 
-        # Rolling BPM buffer for median smoothing
+        # Rolling BPM history (kept for fallback median)
         self._bpm_history: deque[float] = deque(maxlen=8)
+
+        # 1-D Kalman filter state for BPM smoothing
+        self._kf_x: float = 72.0    # state estimate (BPM)
+        self._kf_P: float = 100.0   # error covariance
 
     # ── ROI helpers ──────────────────────────────────────────────────
 
@@ -127,8 +131,11 @@ class RPPGExtractor:
         if N < sub_len:
             return self._pos_simple(rgb_array)
 
+        # Stride = fps//3 (10 frames at 30fps) instead of 1 — 10x fewer
+        # iterations with negligible accuracy loss (windows still overlap 80%)
+        stride = max(1, self.fps // 3)
         pulse = np.zeros(N)
-        for start in range(0, N - sub_len + 1, 1):
+        for start in range(0, N - sub_len + 1, stride):
             end = start + sub_len
             seg = rgb_array[start:end]
 
@@ -168,6 +175,27 @@ class RPPGExtractor:
         alpha = np.std(P) / std_s if std_s > 0 else 1.0
 
         pulse = P + alpha * S
+        pulse -= pulse.mean()
+        return pulse
+
+    @staticmethod
+    def _chrom_algorithm(rgb_array: np.ndarray) -> np.ndarray:
+        """CHROM rPPG algorithm (de Haan & Jeanne, 2013).
+
+        Used as automatic fallback when POS SNR < 1.0, providing a second
+        independent projection that often recovers signal under illumination
+        changes that defeat POS.
+        """
+        if len(rgb_array) < 2:
+            return np.array([])
+        mean = rgb_array.mean(axis=0)
+        mean[mean == 0] = 1.0
+        norm = rgb_array / mean
+        Xs = 3.0 * norm[:, 0] - 2.0 * norm[:, 1]
+        Ys = 1.5 * norm[:, 0] + norm[:, 1] - 1.5 * norm[:, 2]
+        std_ys = np.std(Ys)
+        alpha = np.std(Xs) / std_ys if std_ys > 0 else 1.0
+        pulse = Xs - alpha * Ys
         pulse -= pulse.mean()
         return pulse
 
@@ -211,8 +239,8 @@ class RPPGExtractor:
         freqs, psd = welch(pulse, fs=self.fps, nperseg=nperseg,
                            noverlap=nperseg // 2)
 
-        # Physiological HR band: 50–130 BPM
-        mask = (freqs >= 0.83) & (freqs <= 2.17)
+        # Extended physiological HR band: 45–150 BPM (covers athletes + elderly)
+        mask = (freqs >= 0.75) & (freqs <= 2.5)
         if not mask.any():
             return 0.0
 
@@ -282,6 +310,19 @@ class RPPGExtractor:
         # Cap at 150 ms — higher values are physiologically implausible from rPPG
         return min(rmssd, 150.0)
 
+    def _kalman_update(self, measurement: float) -> float:
+        """1-D constant-position Kalman filter for BPM smoothing.
+
+        Process noise Q=2.0 allows ~1.4 BPM drift per update cycle.
+        Measurement noise R=8.0 reflects typical Welch PSD peak jitter.
+        Converges to smooth BPM within 5-8 updates (~5-8 seconds).
+        """
+        self._kf_P += 2.0                               # predict step
+        K = self._kf_P / (self._kf_P + 8.0)            # Kalman gain
+        self._kf_x += K * (measurement - self._kf_x)   # update
+        self._kf_P *= (1.0 - K)
+        return float(self._kf_x)
+
     # ── public API ───────────────────────────────────────────────────
 
     def process_frame(self, frame_rgb: np.ndarray,
@@ -306,43 +347,60 @@ class RPPGExtractor:
                 "snr": 0.0,
             }
 
-        # POS → detrend → bandpass → metrics
         rgb_arr = np.array(self.rgb_buffer)
 
-        # Use overlap-add POS for full buffer, simple for partial
+        # ── POS signal extraction ──
         if len(rgb_arr) >= self.fps * 6:
-            pulse = self._pos_overlap_add(rgb_arr)
+            pulse_raw = self._pos_overlap_add(rgb_arr)
         else:
-            pulse = self._pos_simple(rgb_arr)
+            pulse_raw = self._pos_simple(rgb_arr)
 
-        if len(pulse) == 0:
+        if len(pulse_raw) == 0:
             return None
 
-        pulse = self._detrend(pulse)
-        filtered = self._bandpass(pulse)
+        pulse_pos    = self._detrend(pulse_raw)
+        filtered_pos = self._bandpass(pulse_pos)
+        snr_pos      = self._compute_snr(filtered_pos)
+
+        # ── CHROM fallback when POS SNR is poor ──
+        if snr_pos < 1.0 and len(rgb_arr) >= self.fps * 3:
+            pulse_chrom    = self._chrom_algorithm(rgb_arr)
+            pulse_chrom    = self._detrend(pulse_chrom)
+            filtered_chrom = self._bandpass(pulse_chrom)
+            snr_chrom      = self._compute_snr(filtered_chrom)
+            if snr_chrom > snr_pos:
+                filtered = filtered_chrom
+                logger.debug("CHROM fallback (SNR POS=%.1f CHROM=%.1f)", snr_pos, snr_chrom)
+            else:
+                filtered = filtered_pos
+        else:
+            filtered = filtered_pos
+
         self.pulse_signal = filtered
 
-        # BPM with median smoothing — only accept physiologically plausible values
+        # ── BPM via Kalman-smoothed Welch estimate ──
         raw_bpm = self._bpm_welch(filtered)
-        if 50 <= raw_bpm <= 130:  # physiological gate
+        if 45 <= raw_bpm <= 150:          # extended physiological gate
             self._bpm_history.append(raw_bpm)
-        self.current_bpm = float(np.median(self._bpm_history)) if self._bpm_history else 0.0
+            self.current_bpm = self._kalman_update(raw_bpm)
+        elif self._bpm_history:
+            self.current_bpm = float(np.median(self._bpm_history))
 
-        # HRV
+        # ── HRV ──
         self.current_hrv = self._hrv_rmssd(filtered)
 
-        # Signal quality
+        # ── Signal quality (tightened thresholds) ──
         self.signal_snr = self._compute_snr(filtered)
 
         if len(self.rgb_buffer) >= self.window_size:
-            if self.signal_snr > 3:
+            if self.signal_snr > 5.0:
                 quality = "Good"
-            elif self.signal_snr > 0:
+            elif self.signal_snr > 1.0:
                 quality = "Fair"
             else:
                 quality = "Poor"
         else:
-            quality = "Stabilizing…"
+            quality = "Stabilizing..."
 
         return {
             "bpm": self.current_bpm,
@@ -374,7 +432,9 @@ class RPPGExtractor:
         """Reset all internal buffers and computed metrics."""
         self.rgb_buffer.clear()
         self._bpm_history.clear()
-        self.current_bpm = 0.0
-        self.current_hrv = 0.0
-        self.signal_snr  = 0.0
+        self.current_bpm  = 0.0
+        self.current_hrv  = 0.0
+        self.signal_snr   = 0.0
         self.pulse_signal = np.array([])
+        self._kf_x = 72.0
+        self._kf_P = 100.0
